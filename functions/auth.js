@@ -1,42 +1,11 @@
-// functions/auth.js
-export async function onRequest(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const cookieHeader = request.headers.get('Cookie') || '';
-  const loggedIn = cookieHeader.includes('family_session=1');
-
-  // Logout
-  if (url.searchParams.get('logout')) {
-    return new Response('Logged out', {
-      status: 200,
-      headers: {
-        'Set-Cookie': 'family_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0',
-      },
-    });
-  }
-
-  // Check session
-  if (request.method === 'GET') {
-    if (loggedIn) return new Response('OK', { status: 200 });
-    return new Response('Not logged in', { status: 401 });
-  }
-
-  // Handle login
-  if (request.method === 'POST') {
-    const form = await request.formData();
-    const user = form.get('username');
-    const pass = form.get('password');
-
-    if (user === env.FAMILY_USER && pass === env.FAMILY_PASS) {
-      return new Response('OK', {
-        status: 200,
-        headers: {
-          'Set-Cookie': 'family_session=1; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800', // 7 days
-        },
-      });
-    }
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  return new Response('Method not allowed', { status: 405 });
+import {authenticated, configured, cookieOptions, reply, sameOrigin, session} from '../lib/session.js';
+export async function onRequest({request, env}) {
+ if (request.method === 'GET') return await authenticated(request,env) ? reply('OK') : reply('Unauthorized',401);
+ if (request.method !== 'POST') return reply('Method not allowed',405,{'Allow':'GET, POST'});
+ if (!sameOrigin(request)) return reply('Forbidden',403);
+ if (new URL(request.url).searchParams.has('logout')) return reply('Logged out',200,{'Set-Cookie':`family_session=; ${cookieOptions}; Max-Age=0`});
+ if (!configured(env)) return reply('Sign-in is not configured',503);
+ let form; try { form = await request.formData(); } catch { return reply('Invalid form',400); }
+ if (form.get('username') !== env.FAMILY_USER || form.get('password') !== env.FAMILY_PASS) return reply('Unauthorized',401);
+ return reply('OK',200,{'Set-Cookie':`family_session=${await session(env)}; ${cookieOptions}; Max-Age=604800`});
 }
