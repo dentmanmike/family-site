@@ -85,3 +85,13 @@ test('authenticated failures expose only a safe upstream status code',async(t)=>
   assert.equal(response.headers.get('X-Home-Status'),'upstream-http-403');
   assert.doesNotMatch(await response.text(),/upstream diagnostic details/);
 });
+
+test('forwarding uses Workers-compatible manual redirects without following other hosts',async(t)=>{
+  const settings={...env,HOME_UPLOAD_URL:'https://home-upload.family.example/v1/upload',HOME_UPLOAD_SECRET:'testing-only-home-secret-with-32-characters'};
+  let mode,requests=0;
+  t.mock.method(globalThis,'fetch',async(_url,options)=>{mode=options.redirect;requests++;return new Response('',{status:302,headers:{Location:'https://untrusted.example/upload'}});});
+  const response=await upload({env:settings,request:await uploadRequest(settings)});
+  assert.equal(mode,'manual');
+  assert.equal(response.status,503);
+  assert.equal(requests,1);
+});

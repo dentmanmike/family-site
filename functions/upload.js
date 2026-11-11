@@ -35,7 +35,7 @@ export async function onRequest({request,env}) {
     phase='timeout';
     const signal=AbortSignal.timeout(90_000);
     phase='forward';
-    const response=await fetch(url,{method:'POST',headers,body:bytes,redirect:'error',signal});
+    const response=await fetch(url,{method:'POST',headers,body:bytes,redirect:'manual',signal});
     if (!response.ok) return unavailable(`upstream-http-${response.status}`);
     phase='receipt-parse';
     const receipt=await response.json();
