@@ -76,3 +76,12 @@ for (const failure of ['offline','forged receipt']) {
     assert.doesNotMatch(await response.text(),new RegExp(secret));
   });
 }
+
+test('authenticated failures expose only a safe upstream status code',async(t)=>{
+  const settings={...env,HOME_UPLOAD_URL:'https://home-upload.family.example/v1/upload',HOME_UPLOAD_SECRET:'testing-only-home-secret-with-32-characters'};
+  t.mock.method(globalThis,'fetch',async()=>new Response('upstream diagnostic details',{status:403}));
+  const response=await upload({env:settings,request:await uploadRequest(settings)});
+  assert.equal(response.status,503);
+  assert.equal(response.headers.get('X-Home-Status'),'upstream-http-403');
+  assert.doesNotMatch(await response.text(),/upstream diagnostic details/);
+});
