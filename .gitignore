@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+access.json
+home-config.json
+tunnel-token.txt
+Login.txt
+*.pem
+secrets/
+*.log
