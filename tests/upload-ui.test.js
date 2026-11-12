@@ -7,11 +7,16 @@ async function uploadUI(response){
   const elements=new Map();
   const element=id=>{
     if(!elements.has(id))elements.set(id,{textContent:'',hidden:false,disabled:false,files:[{size:4}],handlers:{},classList:{toggle(){}},
-      addEventListener(event,fn){this.handlers[event]=fn;},setAttribute(){},focus(){},querySelector(){return this;}});
+      addEventListener(event,fn){this.handlers[event]=fn;},setAttribute(){},focus(){},replaceChildren(){},children:[],querySelector(){return this;}});
     return elements.get(id);
   };
-  const context={document:{getElementById:element},FormData:class{},fetch:async path=>path==='/auth'?{ok:false,status:401}:response,console};
+  const context={document:{getElementById:element},FormData:class{},fetch:async path=>{
+    if(path==='/auth') return {ok:true,status:200};
+    if(path==='/files') return {ok:true,status:200,json:async()=>({files:[],nextCursor:null})};
+    assert.equal(path,'/upload'); return response;
+  },console};
   vm.runInNewContext(source,context);
+  for(let i=0;i<12;i++) await Promise.resolve();
   await element('upload-form').handlers.submit({preventDefault(){},target:{reset(){}}});
   return element('upload-status').textContent;
 }

@@ -3,6 +3,7 @@ import { createHmac, createHash, randomUUID, timingSafeEqual } from 'node:crypto
 import * as fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
+import { createReadHandler } from './read-files.mjs';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const mac = (secret, text) => createHmac('sha256', secret).update(text).digest('hex');
@@ -56,6 +57,7 @@ export function createUploadServer(config) {
   config = { ...config, storageRoot: path.resolve(config.storageRoot), dataRoot: path.resolve(config.dataRoot) };
   const relative = path.relative(config.storageRoot, config.dataRoot);
   if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw new TypeError('Data directory must be below storage root');
+  const handleRead = createReadHandler(config, { storageReady: async () => storageReady(config, false) });
   const seen = new Map();
   let active = 0;
   const server = http.createServer({ maxHeaderSize: 8192, headersTimeout: 10000, requestTimeout: 60000, connectionsCheckingInterval: 1000 }, async (req, res) => {
@@ -70,6 +72,7 @@ export function createUploadServer(config) {
         res.end(JSON.stringify({ ok: ready, storageReady: ready }));
         return;
       }
+      if (await handleRead(req, res)) return;
       if (req.method !== 'POST' || req.url !== '/v1/upload') throw Object.assign(new Error(), { status: 404 });
       const header = name => {
         const key = `x-family-${name}`;
