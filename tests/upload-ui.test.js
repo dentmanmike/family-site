@@ -2,15 +2,15 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-const source=await readFile(new URL('../docs/app.js',import.meta.url),'utf8');
+const source=(await readFile(new URL('../docs/pdf-preview.js',import.meta.url),'utf8'))+'\n'+(await readFile(new URL('../docs/app.js',import.meta.url),'utf8'));
 async function uploadUI(response){
   const elements=new Map();
   const element=id=>{
     if(!elements.has(id))elements.set(id,{textContent:'',hidden:false,disabled:false,files:[{size:4}],handlers:{},classList:{toggle(){}},
-      addEventListener(event,fn){this.handlers[event]=fn;},setAttribute(){},focus(){},replaceChildren(){},children:[],querySelector(){return this;}});
+      addEventListener(event,fn){this.handlers[event]=fn;},setAttribute(){},removeAttribute(){},focus(){},replaceChildren(){},children:[],querySelector(){return this;}});
     return elements.get(id);
   };
-  const context={document:{getElementById:element},FormData:class{},fetch:async path=>{
+  const context={document:{getElementById:element,body:{classList:{toggle(){}}}},AbortController,FormData:class{},fetch:async path=>{
     if(path==='/auth') return {ok:true,status:200};
     if(path==='/files') return {ok:true,status:200,json:async()=>({files:[],nextCursor:null})};
     assert.equal(path,'/upload'); return response;
